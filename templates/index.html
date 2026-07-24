@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite 회원 관리 시스템 (Web)</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table th {
+            background-color: #f1f3f5;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 상단 네비게이션 바 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-people-fill me-2"></i> SQLite 회원 관리 시스템
+            </a>
+            <span class="navbar-text text-white-50">
+                Flask Web Version
+            </span>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <!-- 알림 메시지 (Flash Messages) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row g-4">
+            <!-- 왼쪽: 회원 등록 카드 -->
+            <div class="col-lg-4">
+                <div class="card p-4">
+                    <h4 class="card-title mb-4 text-primary">
+                        <i class="bi bi-person-plus-fill me-2"></i>회원 등록
+                    </h4>
+                    <form action="/register" method="POST">
+                        <div class="mb-3">
+                            <label for="username" class="form-label font-weight-bold">회원 ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="영어/숫자 입력" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">이름 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" placeholder="이름 입력" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">이메일</label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="example@email.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">전화번호</label>
+                            <input type="text" class="form-control" id="phone" name="phone" placeholder="010-0000-0000">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="bi bi-check-circle me-1"></i> 등록하기
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 회원 목록 및 검색 -->
+            <div class="col-lg-8">
+                <div class="card p-4 h-100">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                        <h4 class="card-title mb-0 text-dark">
+                            <i class="bi bi-list-ul me-2"></i>회원 목록 
+                            {% if search_keyword %}
+                                <span class="fs-6 text-muted">('{{ search_keyword }}' 검색 결과: {{ members|length }}건)</span>
+                            {% else %}
+                                <span class="fs-6 text-muted">(전체: {{ members|length }}명)</span>
+                            {% endif %}
+                        </h4>
+                        
+                        <!-- 검색 필터 -->
+                        <form action="/" method="GET" class="d-flex gap-2" style="max-width: 320px; width: 100%;">
+                            <div class="input-group">
+                                <input type="text" name="q" class="form-control" placeholder="ID 또는 이름 검색" value="{{ search_keyword }}">
+                                <button class="btn btn-outline-secondary" type="submit">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                {% if search_keyword %}
+                                    <a href="/" class="btn btn-outline-danger" title="검색 초기화">
+                                        <i class="bi bi-x-lg"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 테이블 목록 -->
+                    {% if members %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="text-center" style="width: 8%;">No.</th>
+                                        <th style="width: 20%;">ID</th>
+                                        <th style="width: 18%;">이름</th>
+                                        <th style="width: 24%;">이메일</th>
+                                        <th style="width: 18%;">전화번호</th>
+                                        <th class="text-center" style="width: 12%;">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for member in members %}
+                                        <tr>
+                                            <td class="text-center text-muted small">{{ member.id }}</td>
+                                            <td><strong>{{ member.username }}</strong></td>
+                                            <td>{{ member.name }}</td>
+                                            <td><span class="small">{{ member.email }}</span></td>
+                                            <td><span class="small">{{ member.phone }}</span></td>
+                                            <td class="text-center">
+                                                <form action="/delete/{{ member.username }}" method="POST" onsubmit="return confirm('⚠️ 정말로 {{ member.name }}님(ID: {{ member.username }})을 삭제하시겠습니까?');" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="삭제">
+                                                        <i class="bi bi-trash3-fill"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-person-x-fill text-muted" style="font-size: 3rem;"></i>
+                            <p class="mt-3 text-secondary">등록된 회원 정보가 존재하지 않습니다.</p>
+                            {% if search_keyword %}
+                                <a href="/" class="btn btn-sm btn-primary">전체 목록으로 돌아가기</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
